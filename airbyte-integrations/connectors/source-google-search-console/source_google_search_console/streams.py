@@ -350,8 +350,11 @@ class SearchByKeyword(SearchAnalytics):
         next_page_token: Mapping[str, Any] = None,
     ) -> Optional[Union[Dict[str, Any], str]]:
         data = super().request_body_json(stream_state, stream_slice, next_page_token)
-
-        stream = SearchAppearance(self.authenticator, self._site_urls, self._start_date, self._end_date)
+        authenicator = self._session.auth or self._authenicator
+        # HttpStream stores authenicator in:
+        # * _authenicator for auth_type=Client
+        # * _session.auth for auth_type=Service
+        stream = SearchAppearance(authenicator, self._site_urls, self._start_date, self._end_date)
         keywords_records = stream.read_records(sync_mode=SyncMode.full_refresh, stream_state=stream_state, stream_slice=stream_slice)
         keywords = {record["searchAppearance"] for record in keywords_records}
 
