@@ -406,9 +406,15 @@ class SearchAnalyticsByCustomDimensions(SearchAnalytics):
         "query": [{"query": {"type": ["null", "string"]}}],
     }
 
-    def __init__(self, dimensions: List[str], *args, **kwargs):
+    def __init__(
+        self,
+        dimensions: List[str],
+        search_types: List[str] = None,
+        *args, **kwargs
+    ):
         super(SearchAnalyticsByCustomDimensions, self).__init__(*args, **kwargs)
         self.dimensions = dimensions
+        self.search_types = search_types or self.search_types
 
     def get_json_schema(self) -> Mapping[str, Any]:
         try:
