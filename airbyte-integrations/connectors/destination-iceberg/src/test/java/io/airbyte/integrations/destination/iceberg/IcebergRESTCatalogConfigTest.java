@@ -4,6 +4,15 @@
 
 package io.airbyte.integrations.destination.iceberg;
 
+import static io.airbyte.integrations.destination.iceberg.IcebergConstants.FORMAT_TYPE_CONFIG_KEY;
+import static java.util.Map.entry;
+import static java.util.Map.ofEntries;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.mockStatic;
+import static org.mockito.Mockito.when;
+
 import com.amazonaws.services.s3.AmazonS3;
 import com.amazonaws.services.s3.model.InitiateMultipartUploadRequest;
 import com.amazonaws.services.s3.model.InitiateMultipartUploadResult;
@@ -12,14 +21,13 @@ import com.amazonaws.services.s3.model.UploadPartResult;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.google.common.collect.ImmutableMap;
 import io.airbyte.commons.json.Jsons;
-import io.airbyte.integrations.destination.iceberg.config.catalog.IcebergCatalogConfig;
-import io.airbyte.integrations.destination.iceberg.config.catalog.IcebergCatalogConfigFactory;
 import io.airbyte.integrations.destination.iceberg.config.catalog.RESTCatalogConfig;
 import io.airbyte.integrations.destination.iceberg.config.format.FormatConfig;
 import io.airbyte.integrations.destination.iceberg.config.storage.S3Config;
 import io.airbyte.integrations.destination.iceberg.config.storage.credential.S3AccessKeyCredentialConfig;
 import io.airbyte.protocol.models.v0.AirbyteConnectionStatus;
 import io.airbyte.protocol.models.v0.AirbyteConnectionStatus.Status;
+import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.hadoop.fs.s3a.S3AFileSystem;
 import org.apache.iceberg.Table;
@@ -30,27 +38,14 @@ import org.apache.iceberg.data.IcebergGenerics;
 import org.apache.iceberg.data.IcebergGenerics.ScanBuilder;
 import org.apache.iceberg.rest.RESTCatalog;
 import org.apache.iceberg.spark.SparkCatalog;
-import org.jetbrains.annotations.NotNull;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.MockedStatic;
 
-import java.util.Map;
-
-import static io.airbyte.integrations.destination.iceberg.IcebergConstants.FORMAT_TYPE_CONFIG_KEY;
-import static java.util.Map.entry;
-import static java.util.Map.ofEntries;
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.mockStatic;
-import static org.mockito.Mockito.when;
-
 @Slf4j
-class IcebergRESTCatalogConfigTest
-{
+class IcebergRESTCatalogConfigTest {
 
   private static final String FAKE_WAREHOUSE_URI = "s3://fake-bucket";
   private static final String FAKE_ENDPOINT = "fake-endpoint";
@@ -63,7 +58,6 @@ class IcebergRESTCatalogConfigTest
   private AmazonS3 s3;
   private RESTCatalogConfig config;
   private Catalog catalog;
-  private IcebergCatalogConfigFactory factory;
 
   @BeforeAll
   static void staticSetup() {
@@ -110,19 +104,11 @@ class IcebergRESTCatalogConfigTest
         .build());
     config.setFormatConfig(new FormatConfig(Jsons.jsonNode(ImmutableMap.of(FORMAT_TYPE_CONFIG_KEY, "Parquet"))));
     config.setDefaultOutputDatabase("default");
-
-    factory = new IcebergCatalogConfigFactory() {
-
-      @Override
-      public IcebergCatalogConfig fromJsonNodeConfig(final @NotNull JsonNode jsonConfig) {
-        return config;
-      }
-    };
   }
 
   @Test
   public void checksRESTServerUri() {
-    final IcebergDestination destinationFail = new IcebergDestination();
+    final IcebergOssDestination destinationFail = new IcebergOssDestination();
     final AirbyteConnectionStatus status = destinationFail.check(Jsons.deserialize("""
                                                                                    {
                                                                                      "catalog_config": {

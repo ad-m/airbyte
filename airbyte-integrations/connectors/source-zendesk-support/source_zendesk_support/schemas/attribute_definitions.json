@@ -1,114 +1,98 @@
 {
-  "type": [
-    "null",
-    "object"
-  ],
+  "$schema": "https://json-schema.org/draft-07/schema#",
+  "title": "Attribute Definitions",
+  "type": ["null", "object"],
   "properties": {
     "title": {
-      "type": [
-        "null",
-        "string"
-      ]
+      "description": "Title of the attribute definition.",
+      "type": ["null", "string"]
     },
     "subject": {
-      "type": [
-        "null",
-        "string"
-      ]
+      "description": "Subject or topic of this attribute definition.",
+      "type": ["null", "string"]
     },
     "type": {
-      "type": [
-        "null",
-        "string"
-      ]
+      "description": "Data type of the attribute.",
+      "type": ["null", "string"]
     },
     "group": {
-      "type": [
-        "null",
-        "string"
-      ]
+      "description": "The group to which this attribute definition belongs.",
+      "type": ["null", "string"]
     },
     "nullable": {
-      "type": [
-        "null",
-        "boolean"
-      ]
+      "description": "Indicates if this attribute definition can be null.",
+      "type": ["null", "boolean"]
     },
     "repeatable": {
-      "type": [
-        "null",
-        "boolean"
-      ]
+      "description": "Specifies if this attribute definition can be repeated.",
+      "type": ["null", "boolean"]
     },
     "operators": {
-      "type": [
-        "null",
-        "array"
-      ],
+      "description": "List of operators allowed for this attribute definition.",
+      "type": ["null", "array"],
       "items": {
-        "type": [
-          "null",
-          "object"
-        ],
+        "description": "Operator details.",
+        "type": ["null", "object"],
         "properties": {
           "value": {
-            "type": [
-              "null",
-              "string"
-            ]
+            "description": "Value associated with the operator.",
+            "type": ["null", "string"]
           },
           "title": {
-            "type": [
-              "null",
-              "string"
-            ]
+            "description": "Title/name of the operator.",
+            "type": ["null", "string"]
           },
           "terminal": {
-            "type": [
-              "null",
-              "boolean"
-            ]
+            "description": "Whether the operator is terminal or not.",
+            "type": ["null", "boolean"]
           }
         }
       }
     },
     "values": {
-      "type": [
-        "null",
-        "array"
-      ],
+      "description": "List of values available for this attribute definition.",
+      "type": ["null", "array"],
       "items": {
-        "type": [
-          "null",
-          "object"
-        ],
+        "description": "Value details.",
+        "type": ["null", "object"],
         "properties": {
           "value": {
-            "type": [
-              "null",
-              "string"
-            ]
+            "description": "Actual value.",
+            "type": ["null", "string"]
           },
           "title": {
-            "type": [
-              "null",
-              "string"
-            ]
+            "description": "Title/name of the value.",
+            "type": ["null", "string"]
           },
           "enabled": {
-            "type": [
-              "null",
-              "boolean"
-            ]
+            "description": "Whether the value is enabled or disabled.",
+            "type": ["null", "boolean"]
           }
         }
       }
     },
     "condition": {
-      "type": [
-        "null",
-        "string"
-      ]
+      "description": "The condition that needs to be met for this attribute definition.",
+      "type": ["null", "string"]
+    },
+    "confition": {
+      "description": "Missing field description, please add.",
+      "type": ["null", "string"]
+    },
+    "metadata": {
+      "description": "Additional metadata related to this attribute definition.",
+      "type": ["null", "object"],
+      "properties": {
+        "collection_key": {
+          "description": "Key for the collection associated with this metadata.",
+          "type": ["null", "string"]
+        },
+        "item_key": {
+          "description": "Key for the item associated with this metadata.",
+          "type": ["null", "string"]
+        }
+      },
+      "additionalProperties": true
     }
   }
 }

@@ -11,6 +11,10 @@ import time
 from datetime import datetime
 
 import docker
+from faunadb import query as q
+from source_fauna import SourceFauna
+from test_util import CollectionConfig, DeletionsConfig, FullConfig, config, mock_logger, ref
+
 from airbyte_cdk.models import (
     AirbyteConnectionStatus,
     AirbyteStream,
@@ -21,9 +25,6 @@ from airbyte_cdk.models import (
     SyncMode,
     Type,
 )
-from faunadb import query as q
-from source_fauna import SourceFauna
-from test_util import CollectionConfig, DeletionsConfig, FullConfig, config, mock_logger, ref
 
 
 def setup_database(source: SourceFauna):
@@ -172,18 +173,21 @@ def setup_container():
 
 def run_discover_test(source: SourceFauna, logger):
     # See `test_util.py` for these values
-    catalog = source.discover(logger, {
-        "secret": "secret",
-        "domain": "localhost",
-        "port": 9000,
-        "scheme": "http",
-        "collection": {
-            "page_size": 64,
-            "deletions": {
-                "deletion_mode": "ignore",
-            }
-        }
-    })
+    catalog = source.discover(
+        logger,
+        {
+            "secret": "secret",
+            "domain": "localhost",
+            "port": 9000,
+            "scheme": "http",
+            "collection": {
+                "page_size": 64,
+                "deletions": {
+                    "deletion_mode": "ignore",
+                },
+            },
+        },
+    )
     assert len(catalog.streams) == 1
     stream = catalog.streams[0]
     assert stream.name == "foo"

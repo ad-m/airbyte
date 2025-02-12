@@ -7,6 +7,7 @@ from abc import ABC
 from typing import Any, Dict, Iterable, List, Mapping, MutableMapping, Optional, Tuple
 
 import requests
+
 from airbyte_cdk.sources import AbstractSource
 from airbyte_cdk.sources.streams import Stream
 from airbyte_cdk.sources.streams.http import HttpStream
@@ -35,8 +36,7 @@ class GenesysStream(HttpStream, ABC):
         response_json = response.json()
 
         if response_json.get("nextUri"):
-            next_query_string = urllib.parse.urlsplit(
-                response_json.get("nextUri")).query
+            next_query_string = urllib.parse.urlsplit(response_json.get("nextUri")).query
             return dict(urllib.parse.parse_qsl(next_query_string))
 
     def request_params(
@@ -245,7 +245,6 @@ class UserGroups(GenesysStream):
 
 class SourceGenesys(AbstractSource):
     def build_refresh_request_body(self) -> Mapping[str, Any]:
-
         return {
             "grant_type": "client_credentials",
             "client_id": self.get_client_id(),
@@ -260,7 +259,6 @@ class SourceGenesys(AbstractSource):
         return True, None
 
     def streams(self, config: Mapping[str, Any]) -> List[Stream]:
-
         GENESYS_REGION_DOMAIN_MAP: Dict[str, str] = {
             "Americas (US East)": "mypurecloud.com",
             "Americas (US East 2)": "use2.us-gov-pure.cloud",
@@ -277,8 +275,10 @@ class SourceGenesys(AbstractSource):
         domain = GENESYS_REGION_DOMAIN_MAP.get(config["tenant_endpoint"])
         base_url = f"https://login.{domain}"
         api_base_url = f"https://api.{domain}"
-        args = {"api_base_url": api_base_url, "authenticator": GenesysOAuthAuthenticator(
-            base_url, config["client_id"], config["client_secret"])}
+        args = {
+            "api_base_url": api_base_url,
+            "authenticator": GenesysOAuthAuthenticator(base_url, config["client_id"], config["client_secret"]),
+        }
 
         # response = self.get_connection_response(config)
         # response.raise_for_status()

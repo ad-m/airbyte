@@ -9,10 +9,11 @@ import static io.airbyte.integrations.source.postgres.ctid.CtidUtils.getStreamsF
 import static io.airbyte.integrations.source.postgres.ctid.CtidUtils.identifyNewlyAddedStreams;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import io.airbyte.cdk.integrations.source.relationaldb.state.StateManager;
+import io.airbyte.commons.exceptions.ConfigErrorException;
 import io.airbyte.integrations.source.postgres.ctid.CtidUtils.CtidStreams;
 import io.airbyte.integrations.source.postgres.ctid.CtidUtils.StreamsCategorised;
 import io.airbyte.integrations.source.postgres.internal.models.InternalModels.StateType;
-import io.airbyte.integrations.source.relationaldb.state.StateManager;
 import io.airbyte.protocol.models.v0.AirbyteStateMessage;
 import io.airbyte.protocol.models.v0.AirbyteStreamNameNamespacePair;
 import io.airbyte.protocol.models.v0.ConfiguredAirbyteCatalog;
@@ -31,9 +32,8 @@ import org.slf4j.LoggerFactory;
 /**
  * The class mainly categorises the streams based on the state type into two categories : 1. Streams
  * that need to be synced via ctid iterator: These are streams that are either newly added or did
- * not complete their initial sync. 2. Streams that need to be synced via cursor-based
- * iterator: These are streams that have completed their initial sync and are not syncing data
- * incrementally.
+ * not complete their initial sync. 2. Streams that need to be synced via cursor-based iterator:
+ * These are streams that have completed their initial sync and are not syncing data incrementally.
  */
 public class CursorBasedCtidUtils {
 
@@ -68,7 +68,7 @@ public class CursorBasedCtidUtils {
             cursorBasedSyncStreamPairs.add(pair);
             statesFromCursorBasedSync.add(stateMessage);
           } else {
-            throw new RuntimeException("Unknown state type: " + streamState.get(STATE_TYPE_KEY).asText());
+            throw new ConfigErrorException("You've changed replication modes - please reset the streams in this connector");
           }
         } else {
           LOGGER.info("State type not present, syncing stream {} via cursor", streamDescriptor.getName());
@@ -79,9 +79,15 @@ public class CursorBasedCtidUtils {
       });
     }
 
-    final List<ConfiguredAirbyteStream> newlyAddedIncrementalStreams = identifyNewlyAddedStreams(fullCatalog, alreadySeenStreamPairs, SyncMode.INCREMENTAL);
+    final List<ConfiguredAirbyteStream> newlyAddedIncrementalStreams =
+        identifyNewlyAddedStreams(fullCatalog, alreadySeenStreamPairs);
     final List<ConfiguredAirbyteStream> streamsForCtidSync = getStreamsFromStreamPairs(fullCatalog, stillInCtidStreamPairs, SyncMode.INCREMENTAL);
-    final List<ConfiguredAirbyteStream> streamsForCursorBasedSync = getStreamsFromStreamPairs(fullCatalog, cursorBasedSyncStreamPairs, SyncMode.INCREMENTAL);
+    final List<ConfiguredAirbyteStream> fullRefreshStreamsForCtidSync =
+        getStreamsFromStreamPairs(fullCatalog, stillInCtidStreamPairs, SyncMode.FULL_REFRESH);
+
+    final List<ConfiguredAirbyteStream> streamsForCursorBasedSync =
+        getStreamsFromStreamPairs(fullCatalog, cursorBasedSyncStreamPairs, SyncMode.INCREMENTAL);
+    streamsForCtidSync.addAll(fullRefreshStreamsForCtidSync);
     streamsForCtidSync.addAll(newlyAddedIncrementalStreams);
 
     return new StreamsCategorised<>(new CtidStreams(streamsForCtidSync, statesFromCtidSync),
@@ -92,12 +98,14 @@ public class CursorBasedCtidUtils {
                                    List<AirbyteStateMessage> statesFromCursorBasedSync) {}
 
   /**
-   * Reclassifies previously categorised ctid stream into standard category.
-   * Used in case we identify ctid is not possible such as a View
+   * Reclassifies previously categorised ctid stream into standard category. Used in case we identify
+   * ctid is not possible such as a View
+   *
    * @param categorisedStreams categorised streams
    * @param streamPair stream to reclassify
    */
-  public static void reclassifyCategorisedCtidStream(final StreamsCategorised<CursorBasedStreams> categorisedStreams, AirbyteStreamNameNamespacePair streamPair) {
+  public static void reclassifyCategorisedCtidStream(final StreamsCategorised<CursorBasedStreams> categorisedStreams,
+                                                     final AirbyteStreamNameNamespacePair streamPair) {
     final Optional<ConfiguredAirbyteStream> foundStream = categorisedStreams
         .ctidStreams()
         .streamsForCtidSync().stream().filter(c -> Objects.equals(
@@ -124,7 +132,9 @@ public class CursorBasedCtidUtils {
     });
   }
 
-  public static void reclassifyCategorisedCtidStreams(final StreamsCategorised<CursorBasedStreams> categorisedStreams, List<AirbyteStreamNameNamespacePair> streamPairs) {
+  public static void reclassifyCategorisedCtidStreams(final StreamsCategorised<CursorBasedStreams> categorisedStreams,
+                                                      final List<AirbyteStreamNameNamespacePair> streamPairs) {
     streamPairs.forEach(c -> reclassifyCategorisedCtidStream(categorisedStreams, c));
   }
+
 }

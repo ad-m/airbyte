@@ -1,27 +1,47 @@
 data:
+  ab_internal:
+    ql: 300
+    sl: 100
   allowedHosts:
     hosts:
       - api-metrica.yandex.net
+  connectorBuildOptions:
+    baseImage: docker.io/airbyte/python-connector-base:3.0.2@sha256:73697fbe1c0e2ebb8ed58e2268484bb4bfb2cb56b653808e1680cbc50bafef75
   connectorSubtype: api
   connectorType: source
   definitionId: 7865dce4-2211-4f6a-88e5-9d0fe161afe7
-  dockerImageTag: 1.0.0
+  dockerImageTag: 1.0.31
   dockerRepository: airbyte/source-yandex-metrica
+  documentationUrl: https://docs.airbyte.com/integrations/sources/yandex-metrica
   githubIssueLabel: source-yandex-metrica
   icon: yandexmetrica.svg
   license: MIT
   name: Yandex Metrica
-  registries:
+  registryOverrides:
     cloud:
       enabled: true
     oss:
       enabled: true
   releaseStage: beta
-  documentationUrl: https://docs.airbyte.com/integrations/sources/yandex-metrica
+  remoteRegistries:
+    pypi:
+      enabled: true
+      packageName: airbyte-source-yandex-metrica
+  supportLevel: community
   tags:
     - language:python
-  ab_internal:
-    sl: 200
-    ql: 300
-  supportLevel: certified
+    - cdk:python
+  connectorTestSuitesOptions:
+    - suite: liveTests
+      testConnections:
+        - name: yandex-metrica_config_dev_null
+          id: 1d2dc4a5-f40f-4b50-a2fd-d41e4d104c7d
+    - suite: unitTests
+    - suite: acceptanceTests
+      testSecrets:
+        - name: SECRET_SOURCE-YANDEX-METRICA__CREDS
+          fileName: config.json
+          secretStore:
+            type: GSM
+            alias: airbyte-connector-testing-secret-store
 metadataSpecVersion: "1.0"

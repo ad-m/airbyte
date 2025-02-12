@@ -9,11 +9,12 @@ import static io.airbyte.integrations.source.postgres.ctid.CtidUtils.identifyNew
 import static io.airbyte.integrations.source.postgres.xmin.PostgresXminHandler.shouldPerformFullSync;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import io.airbyte.cdk.integrations.source.relationaldb.state.StateManager;
+import io.airbyte.commons.exceptions.ConfigErrorException;
 import io.airbyte.commons.json.Jsons;
 import io.airbyte.integrations.source.postgres.ctid.CtidUtils.CtidStreams;
 import io.airbyte.integrations.source.postgres.ctid.CtidUtils.StreamsCategorised;
 import io.airbyte.integrations.source.postgres.internal.models.XminStatus;
-import io.airbyte.integrations.source.relationaldb.state.StateManager;
 import io.airbyte.protocol.models.v0.AirbyteStateMessage;
 import io.airbyte.protocol.models.v0.AirbyteStreamNameNamespacePair;
 import io.airbyte.protocol.models.v0.ConfiguredAirbyteCatalog;
@@ -31,8 +32,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * The class mainly categorises the streams based on the state type into two categories:
- * 1. Streams that need to be synced via ctid iterator: These are streams that are either newly added or did
+ * The class mainly categorises the streams based on the state type into two categories: 1. Streams
+ * that need to be synced via ctid iterator: These are streams that are either newly added or did
  * not complete their initial sync. 2. Streams that need to be synced via xmin iterator: These are
  * streams that have completed their initial sync and are not syncing data incrementally.
  */
@@ -54,34 +55,32 @@ public class XminCtidUtils {
       rawStateMessages.forEach(stateMessage -> {
         final JsonNode streamState = stateMessage.getStream().getStreamState();
         final StreamDescriptor streamDescriptor = stateMessage.getStream().getStreamDescriptor();
-        if (streamState == null || streamDescriptor == null) {
+        if (streamState == null || streamDescriptor == null || !streamState.has(STATE_TYPE_KEY)) {
           return;
         }
 
-        if (streamState.has(STATE_TYPE_KEY)) {
-          if (streamState.get(STATE_TYPE_KEY).asText().equalsIgnoreCase("ctid")) {
-            statesFromCtidSync.add(stateMessage);
-            streamsStillInCtidSync.add(new AirbyteStreamNameNamespacePair(streamDescriptor.getName(), streamDescriptor.getNamespace()));
-          } else if (streamState.get(STATE_TYPE_KEY).asText().equalsIgnoreCase("xmin")) {
-            if (shouldPerformFullSync(currentXminStatus, streamState)) {
-              final AirbyteStreamNameNamespacePair pair = new AirbyteStreamNameNamespacePair(streamDescriptor.getName(),
-                  streamDescriptor.getNamespace());
-              LOGGER.info("Detected multiple wraparounds. Will perform a full sync for {}", pair);
-              streamsStillInCtidSync.add(pair);
-            } else {
-              statesFromXminSync.add(stateMessage);
-            }
+        if (streamState.get(STATE_TYPE_KEY).asText().equalsIgnoreCase("ctid")) {
+          statesFromCtidSync.add(stateMessage);
+          streamsStillInCtidSync.add(new AirbyteStreamNameNamespacePair(streamDescriptor.getName(), streamDescriptor.getNamespace()));
+        } else if (streamState.get(STATE_TYPE_KEY).asText().equalsIgnoreCase("xmin")) {
+          if (shouldPerformFullSync(currentXminStatus, streamState)) {
+            final AirbyteStreamNameNamespacePair pair = new AirbyteStreamNameNamespacePair(streamDescriptor.getName(),
+                streamDescriptor.getNamespace());
+            LOGGER.info("Detected multiple wraparounds. Will perform a full sync for {}", pair);
+            streamsStillInCtidSync.add(pair);
           } else {
-            throw new RuntimeException("Unknown state type: " + streamState.get(STATE_TYPE_KEY).asText());
+            statesFromXminSync.add(stateMessage);
           }
         } else {
-          throw new RuntimeException("State type not present");
+          throw new ConfigErrorException("You've changed replication modes - please reset the streams in this connector");
         }
+
         alreadySeenStreams.add(new AirbyteStreamNameNamespacePair(streamDescriptor.getName(), streamDescriptor.getNamespace()));
       });
     }
 
-    final List<ConfiguredAirbyteStream> newlyAddedIncrementalStreams = identifyNewlyAddedStreams(fullCatalog, alreadySeenStreams, SyncMode.INCREMENTAL);
+    final List<ConfiguredAirbyteStream> newlyAddedIncrementalStreams =
+        identifyNewlyAddedStreams(fullCatalog, alreadySeenStreams);
     final List<ConfiguredAirbyteStream> streamsForCtidSync = new ArrayList<>();
     fullCatalog.getStreams().stream()
         .filter(stream -> streamsStillInCtidSync.contains(AirbyteStreamNameNamespacePair.fromAirbyteStream(stream.getStream())))
@@ -104,7 +103,8 @@ public class XminCtidUtils {
 
   }
 
-  public static void reclassifyCategorisedCtidStream(final StreamsCategorised<XminStreams> categorisedStreams, AirbyteStreamNameNamespacePair streamPair) {
+  public static void reclassifyCategorisedCtidStream(final StreamsCategorised<XminStreams> categorisedStreams,
+                                                     final AirbyteStreamNameNamespacePair streamPair) {
     final Optional<ConfiguredAirbyteStream> foundStream = categorisedStreams
         .ctidStreams()
         .streamsForCtidSync().stream().filter(c -> Objects.equals(
@@ -130,7 +130,10 @@ public class XminCtidUtils {
       categorisedStreams.ctidStreams().statesFromCtidSync().remove(m);
     });
   }
-  public static void reclassifyCategorisedCtidStreams(final StreamsCategorised<XminStreams> categorisedStreams, List<AirbyteStreamNameNamespacePair> streamPairs) {
+
+  public static void reclassifyCategorisedCtidStreams(final StreamsCategorised<XminStreams> categorisedStreams,
+                                                      final List<AirbyteStreamNameNamespacePair> streamPairs) {
     streamPairs.forEach(c -> reclassifyCategorisedCtidStream(categorisedStreams, c));
   }
+
 }

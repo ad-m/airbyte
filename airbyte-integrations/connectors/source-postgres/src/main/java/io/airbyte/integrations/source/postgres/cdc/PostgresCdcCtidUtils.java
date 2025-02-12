@@ -1,18 +1,21 @@
+/*
+ * Copyright (c) 2023 Airbyte, Inc., all rights reserved.
+ */
+
 package io.airbyte.integrations.source.postgres.cdc;
 
 import static io.airbyte.integrations.source.postgres.ctid.CtidStateManager.STATE_TYPE_KEY;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.google.common.collect.Sets;
+import io.airbyte.cdk.integrations.source.relationaldb.CdcStateManager;
 import io.airbyte.commons.json.Jsons;
 import io.airbyte.integrations.source.postgres.internal.models.CtidStatus;
-import io.airbyte.integrations.source.relationaldb.CdcStateManager;
 import io.airbyte.protocol.models.v0.AirbyteStateMessage;
 import io.airbyte.protocol.models.v0.AirbyteStreamNameNamespacePair;
 import io.airbyte.protocol.models.v0.ConfiguredAirbyteCatalog;
 import io.airbyte.protocol.models.v0.ConfiguredAirbyteStream;
 import io.airbyte.protocol.models.v0.StreamDescriptor;
-import io.airbyte.protocol.models.v0.SyncMode;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -23,10 +26,15 @@ import java.util.stream.Collectors;
 
 public class PostgresCdcCtidUtils {
 
-  public static CtidStreams streamsToSyncViaCtid(final CdcStateManager stateManager, final ConfiguredAirbyteCatalog fullCatalog,
-      final boolean savedOffsetAfterReplicationSlotLSN) {
+  public static CtidStreams streamsToSyncViaCtid(final CdcStateManager stateManager,
+                                                 final ConfiguredAirbyteCatalog fullCatalog,
+                                                 final boolean savedOffsetAfterReplicationSlotLSN) {
     if (!savedOffsetAfterReplicationSlotLSN) {
-      return new CtidStreams(fullCatalog.getStreams(), new HashMap<>());
+      return new CtidStreams(
+          fullCatalog.getStreams()
+              .stream()
+              .collect(Collectors.toList()),
+          new HashMap<>());
     }
 
     final AirbyteStateMessage airbyteStateMessage = stateManager.getRawStateMessage();
@@ -64,11 +72,10 @@ public class PostgresCdcCtidUtils {
   }
 
   private static List<ConfiguredAirbyteStream> identifyStreamsToSnapshot(final ConfiguredAirbyteCatalog catalog,
-      final Set<AirbyteStreamNameNamespacePair> alreadySyncedStreams) {
+                                                                         final Set<AirbyteStreamNameNamespacePair> alreadySyncedStreams) {
     final Set<AirbyteStreamNameNamespacePair> allStreams = AirbyteStreamNameNamespacePair.fromConfiguredCatalog(catalog);
     final Set<AirbyteStreamNameNamespacePair> newlyAddedStreams = new HashSet<>(Sets.difference(allStreams, alreadySyncedStreams));
     return catalog.getStreams().stream()
-        .filter(c -> c.getSyncMode() == SyncMode.INCREMENTAL)
         .filter(stream -> newlyAddedStreams.contains(AirbyteStreamNameNamespacePair.fromAirbyteStream(stream.getStream()))).map(Jsons::clone)
         .collect(Collectors.toList());
   }

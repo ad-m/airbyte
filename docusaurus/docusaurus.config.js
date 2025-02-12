@@ -1,11 +1,31 @@
 // @ts-check
 // Note: type annotations allow type checking and IDEs autocompletion
+import "dotenv/config.js";
+const yaml = require("js-yaml");
+const fs = require("node:fs");
+const path = require("node:path");
 
-const lightCodeTheme = require("prism-react-renderer/themes/github");
-const darkCodeTheme = require("prism-react-renderer/themes/dracula");
+const { themes } = require("prism-react-renderer");
+const lightCodeTheme = themes.github;
+const darkCodeTheme = themes.dracula;
+
+const docsHeaderDecoration = require("./src/remark/docsHeaderDecoration");
+const enterpriseDocsHeaderInformation = require("./src/remark/enterpriseDocsHeaderInformation");
+const productInformation = require("./src/remark/productInformation");
+const connectorList = require("./src/remark/connectorList");
+const specDecoration = require("./src/remark/specDecoration");
+const docMetaTags = require("./src/remark/docMetaTags");
+
+const redirects = yaml.load(
+  fs.readFileSync(path.join(__dirname, "redirects.yml"), "utf-8")
+);
 
 /** @type {import('@docusaurus/types').Config} */
 const config = {
+  markdown: {
+    mermaid: true,
+  },
+  themes: ["@docusaurus/theme-mermaid"],
   title: "Airbyte Documentation",
   tagline:
     "Airbyte is an open-source data integration platform to build ELT pipelines. Consolidate your data in your data warehouses, lakes and databases.",
@@ -19,70 +39,40 @@ const config = {
   organizationName: "airbytehq", // Usually your GitHub org/user name.
   projectName: "airbyte", // Usually your repo name.
 
+  // Adds one off script tags to the head of each page
+  // e.g. <script async data-api-key="..." id="unifytag" src="..."></script>
+  scripts: [
+    {
+      src: "https://cdn.unifygtm.com/tag/v1/unify-tag-script.js",
+      async: true,
+      type: "module",
+      id: "unifytag",
+      "data-api-key": "wk_BEtrdAz2_2qgdexg5KRa6YWLWVwDdieFC7CAHkDKz",
+    },
+    {
+      src: "https://cdn.jsdelivr.net/npm/hockeystack@latest/hockeystack.min.js",
+      async: true,
+      "data-apikey": "2094e2379643f69f7aec647a15f786",
+      "data-cookieless": "1",
+      "data-auto-identify": "1",
+    },
+  ],
+  headTags: [
+    {
+      tagName: "meta",
+      attributes: {
+        name: "zd-site-verification",
+        content: "plvcr4wcl9abmq0itvi63c",
+      },
+    },
+  ],
+
   plugins: [
     [
       "@docusaurus/plugin-client-redirects",
       {
         fromExtensions: ["html", "htm"], // /myPage.html -> /myPage
-        redirects: [
-          // /docs/oldDoc -> /docs/newDoc
-          {
-            from: "/upgrading-airbyte",
-            to: "/operator-guides/upgrading-airbyte",
-          },
-          {
-            from: "/catalog",
-            to: "/understanding-airbyte/airbyte-protocol",
-          },
-          {
-            from: "/integrations/sources/google-analytics-data-api",
-            to: "/integrations/sources/google-analytics-v4",
-          },
-          {
-            from: "/integrations/sources/appstore",
-            to: "/integrations/sources/appstore-singer",
-          },
-          {
-            from: "/project-overview/security",
-            to: "/operator-guides/security",
-          },
-          {
-            from: "/operator-guides/securing-airbyte",
-            to: "/operator-guides/security",
-          },
-          {
-            from: "/connector-development/config-based/",
-            to: "/connector-development/config-based/low-code-cdk-overview",
-          },
-          {
-            from: "/project-overview/changelog",
-            to: "/category/release-notes",
-          },
-          {
-            from: "/connector-development/config-based/understanding-the-yaml-file/stream-slicers/",
-            to: "/connector-development/config-based/understanding-the-yaml-file/partition-router",
-          },
-          {
-            from: "/cloud/managing-airbyte-cloud",
-            to: "/category/using-airbyte-cloud",
-          },
-          {
-            from: "/category/managing-airbyte-cloud",
-            to: "/category/using-airbyte-cloud",
-          },
-          {
-            from: "/category/airbyte-open-source-quick-start",
-            to: "/category/getting-started"
-          },
-          {
-            from: "/cloud/dbt-cloud-integration",
-            to: "/cloud/managing-airbyte-cloud/dbt-cloud-integration",
-          },
-          //                        {
-          //                         from: '/some-lame-path',
-          //                         to: '/a-much-cooler-uri',
-          //                        },
-        ],
+        redirects: redirects,
       },
     ],
     () => ({
@@ -93,13 +83,25 @@ const config = {
             rules: [
               {
                 test: /\.ya?ml$/,
-                use: 'yaml-loader'
-              }
-            ]
+                use: "yaml-loader",
+              },
+              {
+                test: /\.html$/i,
+                loader: "html-loader",
+              },
+            ],
           },
         };
       },
     }),
+  ],
+  customFields: {
+    requestErdApiUrl: process.env.REQUEST_ERD_API_URL,
+  },
+  clientModules: [
+    require.resolve("./src/scripts/cloudStatus.js"),
+    require.resolve("./src/scripts/download-abctl-buttons.js"),
+    require.resolve("./src/scripts/fontAwesomeIcons.js"),
   ],
 
   presets: [
@@ -113,15 +115,20 @@ const config = {
           sidebarPath: require.resolve("./sidebars.js"),
           editUrl: "https://github.com/airbytehq/airbyte/blob/master/docs",
           path: "../docs",
-          exclude: ["**/*.inapp.md"],
+          exclude: [
+            "**/*.inapp.md"
+          ],
+          beforeDefaultRemarkPlugins: [specDecoration, connectorList], // use before-default plugins so TOC rendering picks up inserted headings
+          remarkPlugins: [
+            docsHeaderDecoration,
+            enterpriseDocsHeaderInformation,
+            productInformation,
+            docMetaTags,
+          ],
         },
         blog: false,
         theme: {
           customCss: require.resolve("./src/css/custom.css"),
-        },
-        gtag: {
-          trackingID: "UA-156258629-2",
-          anonymizeIP: true,
         },
       }),
     ],
@@ -139,9 +146,9 @@ const config = {
         },
       },
       algolia: {
-          appId: 'OYKDBC51MU',
-          apiKey: '15c487fd9f7722282efd8fcb76746fce', // Public API key: it is safe to commit it
-          indexName: 'airbyte',
+        appId: "OYKDBC51MU",
+        apiKey: "15c487fd9f7722282efd8fcb76746fce", // Public API key: it is safe to commit it
+        indexName: "airbyte",
       },
       navbar: {
         title: "",
@@ -149,19 +156,13 @@ const config = {
           alt: "Simple, secure and extensible data integration",
           src: "img/logo-dark.png",
           srcDark: "img/logo-light.png",
-          width: 140,
           height: 40,
         },
         items: [
           {
             href: "https://airbyte.io/",
             position: "left",
-            label: "Home",
-          },
-          {
-            href: "https://status.airbyte.io/",
-            label: "Status",
-            position: "left",
+            label: "About Airbyte",
           },
           {
             href: "https://airbyte.com/tutorials",
@@ -173,16 +174,31 @@ const config = {
             label: "Support",
             position: "left",
           },
+          // --- Right side ---
+          {
+            href: "https://status.airbyte.com",
+            label: "Cloud Status",
+            className: "cloudStatusLink",
+            position: "right",
+          },
           {
             href: "https://cloud.airbyte.io/signup?utm_campaign=22Q1_AirbyteCloudSignUpCampaign_Trial&utm_source=Docs&utm_content=NavBar",
             label: "Try Airbyte Cloud",
-            position: "left",
+            position: "right",
+            className: "header-button",
+          },
+          {
+            href: "https://github.com/airbytehq",
+            position: "right",
+            "aria-label": "Airbyte on GitHub",
+            className: "header-github-link",
           },
         ],
       },
       prism: {
         theme: lightCodeTheme,
         darkTheme: darkCodeTheme,
+        additionalLanguages: ["bash", "diff", "json"],
       },
     }),
 };

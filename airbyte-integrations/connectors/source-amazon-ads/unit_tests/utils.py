@@ -6,6 +6,8 @@ from typing import Any, Iterator, MutableMapping
 from unittest import mock
 from urllib.parse import urlparse, urlunparse
 
+from source_amazon_ads.config_migrations import MigrateStartDate
+
 from airbyte_cdk.models import SyncMode
 from airbyte_cdk.models.airbyte_protocol import ConnectorSpecification
 from airbyte_cdk.sources import Source
@@ -41,6 +43,7 @@ def read_full_refresh(stream_instance: Stream):
 def command_check(source: Source, config):
     logger = mock.MagicMock()
     connector_config, _ = split_config(config)
+    connector_config = MigrateStartDate.modify_and_save("unit_tests/config.json", source, connector_config)
     if source.check_config_against_spec:
         source_spec: ConnectorSpecification = source.spec(logger)
         check_config_against_spec_or_exit(connector_config, source_spec)

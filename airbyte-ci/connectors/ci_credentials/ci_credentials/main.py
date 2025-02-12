@@ -1,14 +1,16 @@
 #
 # Copyright (c) 2023 Airbyte, Inc., all rights reserved.
 #
+
 import json
 import sys
 from json.decoder import JSONDecodeError
 
 import click
-from common_utils import Logger
 
-from . import SecretsManager
+from .logger import Logger
+from .secrets_manager import SecretsManager
+
 
 logger = Logger()
 
